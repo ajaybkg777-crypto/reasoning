@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ultimate Quiz with Google Sheet Save</title>
+<style>
+body {
+    font-family: 'Arial', sans-serif;
+    margin:0;
+    background: linear-gradient(to right,#667eea,#764ba2);
+    color:#fff;
+}
+.container {
+    max-width: 900px;
+    margin:auto;
+    padding:20px;
+}
+#welcomeScreen, #quizContainer, #resultScreen {
+    display:none;
+    background: rgba(0,0,0,0.85);
+    padding:30px;
+    border-radius:12px;
+    box-shadow:0 0 20px #000;
+    text-align:center;
+}
+h1 {margin-bottom:20px;}
+input[type="text"] {
+    padding:10px;
+    font-size:16px;
+    border-radius:6px;
+    border:none;
+    margin-bottom:20px;
+}
+button {
+    padding:12px 25px;
+    font-size:16px;
+    border-radius:6px;
+    border:none;
+    cursor:pointer;
+    background:#ff9800;
+    color:#fff;
+    transition:0.3s;
+}
+button:hover {background:#e68900;}
+.timer {font-size:18px; font-weight:bold; margin-bottom:20px;}
+.question-card {
+    display:none;
+    text-align:left;
+    background:#444;
+    padding:20px;
+    margin-bottom:20px;
+    border-radius:10px;
+}
+.options label {
+    display:block;
+    background:#555;
+    padding:10px;
+    margin:8px 0;
+    border-radius:6px;
+    cursor:pointer;
+    transition:0.3s;
+}
+.options label:hover {background:#777;}
+.nav-buttons {display:flex; justify-content:space-between;}
+#resultScreen {font-size:22px; font-weight:bold;}
+</style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Welcome Screen -->
+    <div id="welcomeScreen">
+        <h1>Welcome to the Ultimate Quiz!</h1>
+        <input type="text" id="studentName" placeholder="Enter your name" required><br>
+        <button onclick="startQuiz()">Start Quiz</button>
+    </div>
+
+    <!-- Quiz Container -->
+    <div id="quizContainer">
+        <div class="timer" id="timer">Time Left: 60:00</div>
+        <form id="quizForm">
+            <!-- Sample Questions 1-5, Add up to 50 -->
+            <div class="question-card" id="q1">
+                <p>1. What is 2 + 2?</p>
+                <div class="options">
+                    <label><input type="radio" name="q1" value="3"> 3</label>
+                    <label><input type="radio" name="q1" value="4"> 4</label>
+                    <label><input type="radio" name="q1" value="5"> 5</label>
+                    <label><input type="radio" name="q1" value="6"> 6</label>
+                </div>
+            </div>
+
+            <div class="question-card" id="q2">
+                <p>2. Capital of India?</p>
+                <div class="options">
+                    <label><input type="radio" name="q2" value="Mumbai"> Mumbai</label>
+                    <label><input type="radio" name="q2" value="Delhi"> Delhi</label>
+                    <label><input type="radio" name="q2" value="Kolkata"> Kolkata</label>
+                    <label><input type="radio" name="q2" value="Chennai"> Chennai</label>
+                </div>
+            </div>
+
+            <div class="question-card" id="q3">
+                <p>3. Which is a programming language?</p>
+                <div class="options">
+                    <label><input type="radio" name="q3" value="HTML"> HTML</label>
+                    <label><input type="radio" name="q3" value="Python"> Python</label>
+                    <label><input type="radio" name="q3" value="CSS"> CSS</label>
+                    <label><input type="radio" name="q3" value="Photoshop"> Photoshop</label>
+                </div>
+            </div>
+
+            <div class="question-card" id="q4">
+                <p>4. 5 * 6 = ?</p>
+                <div class="options">
+                    <label><input type="radio" name="q4" value="30"> 30</label>
+                    <label><input type="radio" name="q4" value="35"> 35</label>
+                    <label><input type="radio" name="q4" value="25"> 25</label>
+                    <label><input type="radio" name="q4" value="40"> 40</label>
+                </div>
+            </div>
+
+            <div class="question-card" id="q5">
+                <p>5. Sun rises in the?</p>
+                <div class="options">
+                    <label><input type="radio" name="q5" value="East"> East</label>
+                    <label><input type="radio" name="q5" value="West"> West</label>
+                    <label><input type="radio" name="q5" value="North"> North</label>
+                    <label><input type="radio" name="q5" value="South"> South</label>
+                </div>
+            </div>
+
+            <!-- Navigation Buttons -->
+            <div class="nav-buttons">
+                <button type="button" id="prevBtn" onclick="changeQuestion(-1)">Previous</button>
+                <button type="button" id="nextBtn" onclick="changeQuestion(1)">Next</button>
+            </div>
+            <br>
+            <button type="button" id="submitBtn" onclick="submitQuiz()" style="display:none;">Submit Quiz</button>
+        </form>
+    </div>
+
+    <!-- Result Screen -->
+    <div id="resultScreen">
+        <p id="resultText"></p>
+    </div>
+</div>
+
+<script>
+document.getElementById("welcomeScreen").style.display = "block";
+
+let studentName = "";
+let currentQuestion = 0;
+const questionCards = document.getElementsByClassName("question-card");
+const totalQuestions = questionCards.length;
+
+// Correct answers (expand up to 50)
+const answers = { q1:"4", q2:"Delhi", q3:"Python", q4:"30", q5:"East" };
+
+let totalTime = 60*60; // 60 minutes
+let timerInterval;
+
+function startQuiz(){
+    const nameInput = document.getElementById("studentName").value.trim();
+    if(nameInput===""){ alert("Please enter your name."); return; }
+    studentName = nameInput;
+    document.getElementById("welcomeScreen").style.display = "none";
+    document.getElementById("quizContainer").style.display = "block";
+    showQuestion(currentQuestion);
+
+    timerInterval = setInterval(()=>{
+        let minutes=Math.floor(totalTime/60);
+        let seconds=totalTime%60;
+        document.getElementById("timer").innerText=`Time Left: ${minutes}:${seconds<10?'0'+seconds:seconds}`;
+        totalTime--;
+        if(totalTime<0){ clearInterval(timerInterval); submitQuiz(); }
+    },1000);
+}
+
+function showQuestion(n){
+    for(let i=0;i<questionCards.length;i++){ questionCards[i].style.display="none"; }
+    questionCards[n].style.display="block";
+    document.getElementById("prevBtn").style.display=n===0?"none":"inline-block";
+    document.getElementById("nextBtn").style.display=n===totalQuestions-1?"none":"inline-block";
+    document.getElementById("submitBtn").style.display=n===totalQuestions-1?"inline-block":"none";
+}
+
+function changeQuestion(n){
+    currentQuestion+=n;
+    if(currentQuestion<0) currentQuestion=0;
+    if(currentQuestion>=totalQuestions) currentQuestion=totalQuestions-1;
+    showQuestion(currentQuestion);
+}
+
+function submitQuiz(){
+    clearInterval(timerInterval);
+    const form=document.getElementById("quizForm");
+    let score=0;
+    for(let q in answers){
+        const selected=form.elements[q].value;
+        if(selected===answers[q]) score++;
+    }
+
+    // Send to Google Sheet
+    fetch("YOUR_GOOGLE_WEB_APP_URL_HERE", {  // replace with your Apps Script URL
+        method:"POST",
+        body:JSON.stringify({name:studentName,score:score}),
+        headers:{"Content-Type":"application/json"}
+    })
+    .then(r=>r.text())
+    .then(d=>console.log("Saved:",d))
+    .catch(err=>console.error("Error:",err));
+
+    document.getElementById("quizContainer").style.display="none";
+    document.getElementById("resultScreen").style.display="block";
+    document.getElementById("resultText").innerText=`${studentName}, your score is: ${score}/${totalQuestions}`;
+}
+</script>
+
+</body>
+</html>
